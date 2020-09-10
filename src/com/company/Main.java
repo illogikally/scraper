@@ -1,57 +1,14 @@
 package com.company;
 
-import java.io.*;
-import java.net.URL;
-import java.nio.channels.*;
-import java.util.LinkedList;
-import java.util.Queue;
+import org.openqa.selenium.firefox.FirefoxProfile;
+import org.openqa.selenium.firefox.ProfilesIni;
 
-class Download implements Runnable {
-   private Thread t;
-   private final String URL;
-   private final String SAVE_PATH;
-   private static final Queue<Thread> queue = new LinkedList<>();
-   private static int running = 0;
-
-   Download(String url, String savePath) {
-      this.URL = url;
-      this.SAVE_PATH = savePath;
-   }
-
-   public void run() {
-      try {
-         URL content = new URL(URL);
-         ReadableByteChannel rbc = Channels.newChannel(content.openStream());
-         FileOutputStream fos = new FileOutputStream(SAVE_PATH);
-         fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
-         if (!queue.isEmpty()) {
-            queue.remove().start();
-            return;
-         }
-         running--;
-      }
-      catch (Exception e) {
-         e.printStackTrace();
-      }
-   }
-
-   public void start() {
-      if (t == null) {
-         t = new Thread(this);
-         queue.add(t);
-         int MAX_CONCURRENT_THREADS = 10;
-         if (running <= MAX_CONCURRENT_THREADS) {
-            queue.remove().start();
-            running++;
-         }
-      }
-   }
-}
+import java.io.IOException;
+import java.util.Scanner;
 
 public class Main {
-   public static void main(String[] args) throws InterruptedException {
-      Tiktok tiktok = new Tiktok("kimdan39");
-      tiktok.scrape();
+   public static void main(String[] args) {
+      new Instagram().get1post("ksjfl");
    }
 
 

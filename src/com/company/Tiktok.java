@@ -10,18 +10,14 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Tiktok extends Scraper {
+
    public Tiktok(String userId) {
-      super(userId);
+      super(userId, "Naverbot");
    }
 
    @Override
    void scrape() {
-      driver.get("https://www.tiktok.com/@" + userId);
-      if (!isPageLoaded()) {
-         return;
-      }
-
-      loadEntirePage();
+      loading();
       Long viewHeight = jsGet("window.innerHeight");
       createSaveDir();
       List<WebElement> videos = driver.findElements(By.className("video-card"));
@@ -30,8 +26,8 @@ public class Tiktok extends Scraper {
       for (int i = 0, currentYScroll = 0; i < videos.size(); ) {
          try {
             actions.moveToElement(videos.get(i)).perform();
-            download(getSrc());
             ++i;
+            download(getSrcs(), this::getFileName);
             wait(200);
          }
          catch (MoveTargetOutOfBoundsException e) {
@@ -39,31 +35,24 @@ public class Tiktok extends Scraper {
             jsScroll(currentYScroll);
          }
       }
+
+      closeFirefox();
    }
 
    @Override
-   boolean isPageLoaded() {
+   void checkIfPageNotFound() {
       while (driver.findElements(By.className("video-card")).isEmpty()) {
          if (!driver.findElements(By.className("error-page")).isEmpty()) {
-            return false;
+            System.out.println("Page not found: re-check the user id.");
+            closeFirefox();
+            System.exit(0);
          }
          wait(100);
       }
-      return true;
    }
 
    @Override
-   void download(HashSet<String> srcs) {
-      System.out.println(srcs);
-      long filename = System.currentTimeMillis();
-      String savePath = String.format("%s/%s.mp4", userId, filename);
-      for (var src : srcs) {
-         new Download(src, savePath).start();
-      }
-   }
-
-   @Override
-   HashSet<String> getSrc() {
+   HashSet<String> getSrcs() {
       HashSet<String> srcs = new HashSet<>();
       Pattern p = Pattern.compile("(?<=video src=\")[^\"]+");
       Matcher src;
@@ -82,7 +71,13 @@ public class Tiktok extends Scraper {
       return (Long) js.executeScript(String.format("return %s;", cmd));
    }
 
-   private void loadEntirePage() {
+   private void loading() {
+      driver.get("https://www.tiktok.com/@" + userId);
+      checkIfPageNotFound();
+      loadTheWholePage();
+   }
+
+   private void loadTheWholePage() {
       Long currScrollHeight = jsGet("document.body.scrollHeight");
       while (true) {
          jsScroll(currScrollHeight);
@@ -95,5 +90,9 @@ public class Tiktok extends Scraper {
       }
       wait(500);
       jsScroll(0);
+   }
+
+   private String getFileName(String src) {
+      return System.currentTimeMillis() + ".mp4";
    }
 }

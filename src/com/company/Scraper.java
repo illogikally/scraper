@@ -1,13 +1,19 @@
 package com.company;
 
+import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.firefox.*;
 import org.openqa.selenium.interactions.Actions;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 public abstract class Scraper {
    String userId;
@@ -15,9 +21,13 @@ public abstract class Scraper {
    JavascriptExecutor js;
    Actions actions;
 
-   public Scraper(String userId) {
+   public Scraper(String userId, String userAgent) {
+      this(userAgent);
       this.userId = userId;
-      FirefoxOptions options = firefoxOptions();
+   }
+
+   public Scraper(String userAgent) {
+      FirefoxOptions options = firefoxOptions(userAgent);
       setDriverPath();
       driver = new FirefoxDriver(options);
       actions = new Actions(driver);
@@ -25,20 +35,25 @@ public abstract class Scraper {
    }
 
    private FirefoxProfile getFirefoxProfile() {
-      FirefoxProfile p = new ProfilesIni().getProfile("default");
-      p.setAcceptUntrustedCertificates(true);
-      return p;
+      ProfilesIni pi = new ProfilesIni();
+      FirefoxProfile fp = pi.getProfile("default");
+      fp.setAcceptUntrustedCertificates(true);
+      return fp;
    }
 
-   private FirefoxOptions firefoxOptions() {
-      FirefoxProfile profile = getFirefoxProfile();
-      return new FirefoxOptions().setProfile(profile)
+   private FirefoxOptions firefoxOptions(String userAgent) {
+      FirefoxProfile p = getFirefoxProfile();
+      return new FirefoxOptions().setProfile(p)
                                  .setHeadless(false)
-                                 .addPreference("general.useragent.override", "Naverbot");
+                                 .addPreference("general.useragent.override", userAgent);
    }
 
    void createSaveDir() {
       new File(userId).mkdir();
+   }
+
+   void closeFirefox() {
+      driver.quit();
    }
 
    void wait(int milliseconds) {
@@ -50,12 +65,21 @@ public abstract class Scraper {
       }
    }
 
-   void setDriverPath() {
+
+   private void setDriverPath() {
       System.setProperty("webdriver.gecko.driver", "./drivers/geckodriver.exe");
    }
 
-   abstract HashSet<String> getSrc();
-   abstract void download(HashSet<String> srcs);
-   abstract boolean isPageLoaded();
+   void download(HashSet<String> srcs, Function<String, String> getFileName) {
+      System.out.println(srcs);
+      for (var src : srcs) {
+         String filename =  getFileName.apply(src);
+         String savePath = String.format("%s/%s", userId, filename);
+         new Download(src, savePath).start();
+      }
+   }
+
+   abstract HashSet<String> getSrcs();
    abstract void scrape();
+   abstract void checkIfPageNotFound();
 }
